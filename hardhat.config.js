@@ -1,0 +1,1 @@
+import "dotenv/config"; import "@nomicfoundation/hardhat-toolbox"; export default { solidity: { version: "0.8.20", settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true } }, networks: { kite: { url: "https://rpc-testnet.gokite.ai/", chainId: 2368, accounts: [process.env.PRIVATE_KEY] } } };
