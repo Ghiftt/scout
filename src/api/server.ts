@@ -11,7 +11,7 @@ import { x402Middleware, extractERC3009, KitePaymentPayload } from "./x402.js";
 import { createProxyMiddleware } from "http-proxy-middleware";
 
 const scoutWallet = new ethers.Wallet(
-  process.env.SCOUT_PRIVATE_KEY!,
+  process.env.SCOUT_PRIVATE_KEY || process.env.PRIVATE_KEY!,
   provider
 );
 const scoutRegistryContract = new ethers.Contract(
