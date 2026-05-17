@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ethers } from "ethers";
 import { verifyAndPay, rejectTask, failTask, getTaskStatus } from "./contract.js";
+import { createHash } from "crypto";
 import dotenv from "dotenv";
 import { provider } from "./contract.js";
 
@@ -10,20 +11,15 @@ dotenv.config();
 // CONFIG
 // ═══════════════════════════════════════════
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-if (!GEMINI_API_KEY) {
-  throw new Error("GEMINI_API_KEY missing from environment");
-}
 
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
+({
+  model: "gemini-2.0-flash",
   generationConfig: {
     responseMimeType: "application/json"
   }
 });
 
-const MAX_RADIUS_METERS = 500;
+const MAX_RADIUS_METERS = 5000;
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024; // 25MB
 const ALLOWED_MIME_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 
@@ -55,6 +51,7 @@ export interface VerificationResult {
   passed: boolean;
   confidenceScore: number;
   reason: string;
+  txHash?: string;
   observations: {
     item_present?: boolean;
     price_confirmed?: string;
@@ -85,15 +82,20 @@ function sanitize(input: string): string {
 // ═══════════════════════════════════════════
 
 function verifyBundleHash(bundle: CaptureBundle): boolean {
-  const computed = ethers.keccak256(
-    ethers.toUtf8Bytes(
-      JSON.stringify({
-        videoBase64: bundle.videoBase64,
-        gps: bundle.gps,
-        deviceTimestamp: bundle.deviceTimestamp
-      })
-    )
-  );
+  const canonical = JSON.stringify({
+    videoBase64: bundle.videoBase64,
+    gps: {
+      lat: bundle.gps.lat,
+      lng: bundle.gps.lng,
+      accuracy: bundle.gps.accuracy,
+      timestamp: bundle.gps.timestamp
+    },
+    deviceTimestamp: bundle.deviceTimestamp
+  });
+  const computed = "0x" + createHash("sha256")
+  .update(canonical)
+  .digest("hex");
+
   return computed === bundle.bundleHash;
 }
 
@@ -182,6 +184,28 @@ async function scoreTimestamp(
 // GEMINI VISION SCORING
 // ═══════════════════════════════════════════
 
+async function extractFirstFrame(videoBase64: string, mimeType: string): Promise<string> {
+  // Write video to temp file, extract frame with ffmpeg
+  const { execSync } = await import("child_process");
+  const { writeFileSync, readFileSync, unlinkSync } = await import("fs");
+  const { tmpdir } = await import("os");
+  const { join } = await import("path");
+
+  const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+  const inputPath = join(tmpdir(), `scout-video-${Date.now()}.${ext}`);
+  const outputPath = join(tmpdir(), `scout-frame-${Date.now()}.jpg`);
+
+  try {
+    writeFileSync(inputPath, Buffer.from(videoBase64, "base64"));
+    execSync(`ffmpeg -i "${inputPath}" -vframes 1 -q:v 2 "${outputPath}" -y`, { stdio: "ignore" });
+    const frameBase64 = readFileSync(outputPath).toString("base64");
+    return frameBase64;
+  } finally {
+    try { unlinkSync(inputPath); } catch {}
+    try { unlinkSync(outputPath); } catch {}
+  }
+}
+
 async function scoreWithGemini(
   videoBase64: string,
   mimeType: string,
@@ -193,9 +217,11 @@ async function scoreWithGemini(
   observations: VerificationResult["observations"];
   reasoning: string;
 }> {
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY missing from environment");
+
   const cleanCriteria = sanitize(successCriteria);
   const cleanProof = proofRequired.map(sanitize).join(", ") || "standard visual verification";
-
   const isVerify = taskType === "Verify";
 
   const prompt = isVerify
@@ -204,7 +230,7 @@ Task type: VERIFICATION
 Success criteria: ${cleanCriteria}
 Required proof items: ${cleanProof}
 
-Respond ONLY with JSON:
+Respond ONLY with JSON, no markdown:
 {
   "score": <number 0-100>,
   "item_present": <boolean>,
@@ -220,7 +246,7 @@ Task type: EXECUTION
 Success criteria: ${cleanCriteria}
 Required proof items: ${cleanProof}
 
-Respond ONLY with JSON:
+Respond ONLY with JSON, no markdown:
 {
   "score": <number 0-100>,
   "action_completed": <boolean>,
@@ -231,12 +257,46 @@ Respond ONLY with JSON:
 
 Score guide: 90-100 all proof present, 70-89 most present, 50-69 partial, 0-49 insufficient.`;
 
-  const result = await model.generateContent([
-    { inlineData: { mimeType, data: videoBase64 } },
-    prompt
-  ]);
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+            type: "image_url",
+            image_url: {
+             url: `data:image/jpeg;base64,${await extractFirstFrame(videoBase64, mimeType)}`
+           }
+        },
+            {
+              type: "text",
+              text: prompt
+            }
+          ]
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 500,
+    }),
+  });
 
-  const parsed = JSON.parse(result.response.text());
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Groq vision error: ${response.status} ${err}`);
+  }
+
+  const json = await response.json() as {
+    choices: Array<{ message: { content: string } }>
+  };
+
+  const parsed = JSON.parse(json.choices[0].message.content);
 
   return {
     score: Math.min(100, Math.max(0, Number(parsed.score) || 0)),
@@ -302,8 +362,8 @@ export async function processVerification(
   // Step 1 — Fetch task state from chain
   const task = await getTaskStatus(bundle.taskId);
 
-  if (task.status !== "Submitted") {
-    throw new Error(`Invalid task state: ${task.status}. Expected Submitted.`);
+  if (task.status !== "Submitted" && task.status !== "Open") {
+    throw new Error(`Invalid task state: ${task.status}. Expected Open or Submitted.`);
   }
 
   // Step 2 — Input validation
@@ -441,14 +501,17 @@ export async function processVerification(
   }
 
   // Step 9 — Settle on chain
+  // Step 9 — Settle on chain
+  let verifyTxHash = "";
   if (passed) {
-    await verifyAndPay(
+    const txHash = await verifyAndPay(
       bundle.taskId,
-      finalScore,
+      finalScore * 100,
       erc3009Sig.v,
       erc3009Sig.r,
       erc3009Sig.s
     );
+    verifyTxHash = txHash;
   } else {
     await rejectTask(
       bundle.taskId,
@@ -462,6 +525,7 @@ export async function processVerification(
     reason: geminiResult.reasoning,
     observations: geminiResult.observations,
     captureURI,
+    txHash: verifyTxHash,
     scoreBreakdown: {
       gpsScore: gpsResult.score,
       timestampScore: timestampResult.score,

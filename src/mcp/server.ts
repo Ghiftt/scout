@@ -4,6 +4,7 @@ import { z } from "zod";
 import express, { Request, Response, NextFunction } from "express";
 import { ethers } from "ethers";
 import crypto from "crypto";
+import { saveTaskMetadata } from "../core/store.js";
 import {
   createScoutTask,
   getTaskStatus,
@@ -18,6 +19,16 @@ import {
 import dotenv from "dotenv";
 
 dotenv.config();
+
+// In-memory task metadata store
+// Maps taskId → spec details for PWA feed enrichment
+export const taskMetadataStore = new Map<string, {
+  ipfsHash: string;
+  question: string;
+  location: { lat: number; lng: number; address: string; radiusMeters: number };
+  successCriteria: string;
+  instructions?: string;
+}>();
 
 const app = express();
 app.use(express.json());
@@ -104,7 +115,10 @@ server.tool(
     auth_valid_after: z.number().describe("ERC3009 authorization valid after timestamp"),
     auth_valid_before: z.number().describe("ERC3009 authorization valid before timestamp"),
     auth_nonce: z.string().describe("ERC3009 authorization nonce"),
-    auth_hash: z.string().describe("ERC3009 authorization hash")
+    auth_hash: z.string().describe("ERC3009 authorization hash"),
+    erc3009_v: z.number().describe("ERC3009 signature v"),
+    erc3009_r: z.string().describe("ERC3009 signature r"),
+    erc3009_s: z.string().describe("ERC3009 signature s"),
   },
   async (params) => {
     try {
@@ -158,6 +172,36 @@ server.tool(
 
       const { taskId } = await createScoutTask(definition);
 
+      saveTaskMetadata(taskId, {
+        question: params.question,
+        successCriteria: params.success_criteria,
+        location: {
+          lat: params.location_lat,
+          lng: params.location_lng,
+          address: params.location_address,
+          radiusMeters: params.location_radius_meters
+        },
+        ipfsHash,
+        specHash,
+        erc3009: {
+          v: params.erc3009_v,
+          r: params.erc3009_r,
+          s: params.erc3009_s,
+        },
+      });
+
+      taskMetadataStore.set(taskId, {
+  ipfsHash,
+  question: params.question,
+  location: {
+    lat: params.location_lat,
+    lng: params.location_lng,
+    address: params.location_address,
+    radiusMeters: params.location_radius_meters
+  },
+  successCriteria: params.success_criteria,
+});
+
       return {
         content: [{
           type: "text",
@@ -207,7 +251,10 @@ server.tool(
     auth_valid_after: z.number().describe("ERC3009 authorization valid after timestamp"),
     auth_valid_before: z.number().describe("ERC3009 authorization valid before timestamp"),
     auth_nonce: z.string().describe("ERC3009 authorization nonce"),
-    auth_hash: z.string().describe("ERC3009 authorization hash")
+    auth_hash: z.string().describe("ERC3009 authorization hash"),
+    erc3009_v: z.number().describe("ERC3009 signature v"),
+    erc3009_r: z.string().describe("ERC3009 signature r"),
+    erc3009_s: z.string().describe("ERC3009 signature s"),
   },
   async (params) => {
     try {

@@ -1,0 +1,26 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "name": "taskId", "type": "bytes32"},
+      {"indexed": true, "name": "agent", "type": "address"},
+      {"indexed": false, "name": "taskType", "type": "uint8"},
+      {"indexed": false, "name": "paymentAmount", "type": "uint256"},
+      {"indexed": false, "name": "createdAt", "type": "uint256"}
+    ],
+    "name": "TaskCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "name": "taskId", "type": "bytes32"},
+      {"indexed": true, "name": "scout", "type": "address"},
+      {"indexed": true, "name": "checkpointHash", "type": "bytes32"},
+      {"indexed": false, "name": "confidenceScore", "type": "uint16"},
+      {"indexed": false, "name": "paymentAmount", "type": "uint256"}
+    ],
+    "name": "ScoutTaskCompleted",
+    "type": "event"
+  }
+]

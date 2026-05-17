@@ -31,7 +31,9 @@ const verifierWallet = new ethers.Wallet(PRIVATE_KEY, provider);
 const REGISTRY_ABI = [
   "function createTask(bytes32 taskId, address paymentToken, uint256 paymentAmount, uint16 minConfidence, uint256 durationSeconds, bytes32 checkpointHash, uint8 taskType, string[] memory proofRequired, tuple(uint256 validAfter, uint256 validBefore, bytes32 nonce, bytes32 authHash) auth) external",
   "function cancelTask(bytes32 taskId) external",
+  "function acceptTask(bytes32 taskId) external",
   "function verifyAndPay(bytes32 taskId, uint16 confidenceScore, uint8 v, bytes32 r, bytes32 s) external",
+  "function submitProof(bytes32 taskId, string memory captureURI) external",
   "function rejectTask(bytes32 taskId, string memory reason) external",
   "function failTaskPermanently(bytes32 taskId, string memory reason) external",
   "function getTask(bytes32 taskId) external view returns (tuple(bytes32 taskId, address agent, address scout, address paymentToken, uint256 paymentAmount, uint16 minConfidence, uint256 createdAt, uint256 expiresAt, uint8 status, bytes32 checkpointHash, string captureURI, uint8 taskType, string[] proofRequired, tuple(uint256 validAfter, uint256 validBefore, bytes32 nonce, bytes32 authHash) auth))",
@@ -240,9 +242,9 @@ export async function verifyAndPay(
   v: number,
   r: string,
   s: string
-): Promise<void> {
-  if (confidenceScore < 0 || confidenceScore > 100) {
-    throw new Error("confidenceScore must be between 0 and 100");
+): Promise<string> {
+  if (confidenceScore < 0 || confidenceScore > 10000) {
+    throw new Error("confidenceScore must be between 0 and 10000");
   }
 
   try {
@@ -255,13 +257,14 @@ export async function verifyAndPay(
     );
 
     const receipt = await tx.wait();
-
     if (!receipt || receipt.status !== 1) {
       throw new Error("VerifyAndPay transaction failed");
     }
+    return receipt.hash;
   } catch (error) {
     throw new Error(`Failed to verify and pay task ${taskId}: ${String(error)}`);
   }
+  return "";
 }
 
 export async function rejectTask(taskId: string, reason: string): Promise<void> {
@@ -355,7 +358,10 @@ export async function uploadTaskSpec(spec: TaskSpec): Promise<{ ipfsHash: string
 }
 
 export async function fetchTaskSpec(ipfsHash: string, expectedHash: string): Promise<TaskSpec> {
-  const response = await fetch(`https://gateway.pinata.cloud/ipfs/${ipfsHash}`);
+  const PINATA_JWT = process.env.PINATA_JWT;
+const response = await fetch(`https://gateway.pinata.cloud/ipfs/${ipfsHash}`, {
+  headers: PINATA_JWT ? { Authorization: `Bearer ${PINATA_JWT}` } : {}
+});
 
   if (!response.ok) {
     throw new Error(`Failed to fetch task spec from IPFS: ${response.statusText}`);
