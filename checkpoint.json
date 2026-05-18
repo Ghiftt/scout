@@ -1,0 +1,29 @@
+{
+  "taskId": "0x3723f98baf92135aee0a35a05bcaba6a7d40c1d3348c31d73621760a08e0e38b",
+  "listing": {
+    "id": "jiji-ph-88821",
+    "title": "iPhone 16 Pro 256GB — Selling My Personal Device",
+    "price_usdc": 320,
+    "market_value_usdc": 600,
+    "seller": "Kenny",
+    "seller_joined_months": 1,
+    "seller_reviews": 0,
+    "verified_badge": false,
+    "imei": "352039081234567",
+    "description": "Selling my iPhone 16 Pro. Bought 8 months ago. No scratches. Comes with original box and charger.",
+    "location": {
+      "address": "Port Harcourt, Rivers State",
+      "lat": 4.9002552,
+      "lng": 7.0424838
+    },
+    "trust": 0,
+    "arbitrage": 280
+  },
+  "dispatchedAt": 1779092235007,
+  "stage": "awaiting_scout",
+  "erc3009": {
+    "v": 27,
+    "r": "0x18f6efec35826e3cb7cc780e87bde7693ad23dd0c70ac7146bcf31deb1692e4c",
+    "s": "0x6072adccb3aea1e63195e3bce739cae8ba0a1223a28cd0133274dc94fbb564c4"
+  }
+}

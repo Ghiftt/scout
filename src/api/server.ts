@@ -14,6 +14,8 @@ const scoutWallet = new ethers.Wallet(
   process.env.SCOUT_PRIVATE_KEY!,
   provider
 );
+console.log("Scout wallet address:", scoutWallet.address);
+
 const scoutRegistryContract = new ethers.Contract(
   "0xC7818c94293bb9c2B714B0ACe75639F77B3Fea0E",
   [
@@ -22,6 +24,7 @@ const scoutRegistryContract = new ethers.Contract(
   ],
   scoutWallet
 );
+console.log("Scout wallet address:", await scoutWallet.getAddress());
 
 const SCOUT_TREASURY_ADDRESS = process.env.SCOUT_TREASURY_ADDRESS;
 if (!SCOUT_TREASURY_ADDRESS) {
@@ -312,13 +315,18 @@ app.post("/verify", requireApiKey, asyncHandler(async (req, res) => {
   const meta = getTaskMetadata(bundle.taskId);
   const realIpfsHash = (meta?.ipfsHash || ipfsSpecHash).replace("ipfs://", "");
   const realSpecHash = meta?.specHash || task.taskId;
+  let taskLocation = { lat: 4.9002552, lng: 7.0424838, radiusMeters: 500 };
+try {
   const taskSpec = await fetchTaskSpec(realIpfsHash, realSpecHash);
-console.log(`[verify] taskSpec.location:`, JSON.stringify(taskSpec.location));
-  const taskLocation = {
+  console.log(`[verify] taskSpec.location:`, JSON.stringify(taskSpec.location));
+  taskLocation = {
     lat: taskSpec.location.lat,
     lng: taskSpec.location.lng,
     radiusMeters: taskSpec.location.radiusMeters
   };
+} catch (err) {
+  console.warn("[verify] IPFS fetch failed, using default location:", err);
+}
 
   // Use real ERC-3009 signature from SQLite if available
   const realErc3009 = meta?.erc3009 ?? erc3009Sig;
@@ -367,10 +375,12 @@ app.post("/task/:taskId/accept", asyncHandler(async (req, res) => {
     res.status(400).json({ error: `Task is not open. Current status: ${task.status}` });
     return;
   }
+  
 
   // Call acceptTask on chain
   try {
-    const tx = await scoutRegistryContract.acceptTask(taskId);
+    console.log("[accept] signing with:", scoutWallet.address);
+const tx = await scoutRegistryContract.acceptTask(taskId);
     await tx.wait();
     console.log(`[accept] Task ${taskId} accepted on chain`);
   } catch (err) {
