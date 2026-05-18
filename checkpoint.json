@@ -1,5 +1,5 @@
 {
-  "taskId": "0x9be2544af7a68c33139c1557ba6691ad8312b256655756564fbc3dfaa217f9c6",
+  "taskId": "0xbc4765e055919ea517aaacd9b84ba6880634d5b9c74e052d132cd16f5e80c02b",
   "listing": {
     "id": "jiji-ph-88821",
     "title": "iPhone 16 Pro 256GB — Selling My Personal Device",
@@ -19,11 +19,11 @@
     "trust": 0,
     "arbitrage": 280
   },
-  "dispatchedAt": 1779093239188,
+  "dispatchedAt": 1779094058176,
   "stage": "awaiting_scout",
   "erc3009": {
     "v": 27,
-    "r": "0x0114a975542d9b979dc5f6f9e69855586d7122b603899cf03384890de6b6bae2",
-    "s": "0x73b860c4b08f685db321d9381325bd55d1915ab020f72b5f47977ecad82f53ec"
+    "r": "0x2cc2548090c22e76868745f53695c6180214582b4dd2f94bb7814efc2273131a",
+    "s": "0x0cc76e6e407a44112a3fc19f94fbd17ab3de4164eb5c0adda4f3715d753105e4"
   }
 }
