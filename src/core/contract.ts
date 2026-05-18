@@ -24,6 +24,11 @@ await provider.getNetwork().catch(() => {
 
 const verifierWallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
+const scoutWallet = new ethers.Wallet(
+  process.env.SCOUT_PRIVATE_KEY!,
+  provider
+);
+
 // ═══════════════════════════════════════════
 // ABI
 // ═══════════════════════════════════════════
@@ -64,6 +69,12 @@ export const registryContract = new ethers.Contract(
   SCOUT_REGISTRY_ADDRESS,
   REGISTRY_ABI,
   verifierWallet
+);
+
+export const registryContractAsScout = new ethers.Contract(
+  SCOUT_REGISTRY_ADDRESS,
+  REGISTRY_ABI,
+  scoutWallet
 );
 
 export const registryRead = new ethers.Contract(
@@ -265,7 +276,7 @@ export async function verifyAndPay(
     throw new Error(`Failed to verify and pay task ${taskId}: ${String(error)}`);
   }
   return "";
-}
+  }
 
 export async function rejectTask(taskId: string, reason: string): Promise<void> {
   try {
@@ -358,10 +369,7 @@ export async function uploadTaskSpec(spec: TaskSpec): Promise<{ ipfsHash: string
 }
 
 export async function fetchTaskSpec(ipfsHash: string, expectedHash: string): Promise<TaskSpec> {
-  const PINATA_JWT = process.env.PINATA_JWT;
-const response = await fetch(`https://gateway.pinata.cloud/ipfs/${ipfsHash}`, {
-  headers: PINATA_JWT ? { Authorization: `Bearer ${PINATA_JWT}` } : {}
-});
+  const response = await fetch(`https://ipfs.io/ipfs/${ipfsHash}`, {});
 
   if (!response.ok) {
     throw new Error(`Failed to fetch task spec from IPFS: ${response.statusText}`);
