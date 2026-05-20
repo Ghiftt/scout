@@ -322,7 +322,7 @@ Goldsky Subgraph:
 
 ## Live Demo
 
-Scout PWA: [https://scout-pwa.vercel.app](https://scout-pwa.vercel.app)
+Scout PWA: [https://scout-pwa.vercel.app](https://scout-pwa.vercel.app),[https://github.com/Ghiftt/scout-pwa]
 
 Scout Backend: [https://scout-production-5c3a.up.railway.app](https://scout-production-5c3a.up.railway.app)
 
