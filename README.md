@@ -322,11 +322,13 @@ Goldsky Subgraph:
 
 ## Live Demo
 
-Scout PWA: [https://scout-pwa.vercel.app](https://scout-pwa.vercel.app),[https://github.com/Ghiftt/scout-pwa]
+Scout PWA: [https://scout-pwa.vercel.app](https://scout-pwa.vercel.app)
 
 Scout Backend: [https://scout-production-5c3a.up.railway.app](https://scout-production-5c3a.up.railway.app)
 
 Demo Video: [https://youtu.be/Kv1ODQTP25g](https://youtu.be/Kv1ODQTP25g)
+
+Scout PWA repo: [https://github.com/Ghiftt/scout-pwa](https://github.com/Ghiftt/scout-pwa)
 
 ---
 
