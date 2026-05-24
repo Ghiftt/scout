@@ -125,7 +125,7 @@ Perform real-world tasks agents cannot do without a body.
 
 Return structured, cryptographically verifiable proof back to the agent so execution continues autonomously.
 
-This is Scout’s core primitive:
+This is Scout’s core:
 
 > pause → verify/execute → attest → resume
 
