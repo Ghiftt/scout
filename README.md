@@ -279,9 +279,21 @@ Detects physical uncertainty, dispatches Scout through MCP, waits for verified p
 ### Verification Layer
 
 * Scout PWA (Vercel)
-* GPS location locking
-* Video evidence capture
-* Gemini Vision scoring
+* Input validation — video MIME type and size validated before 
+  any scoring runs. Invalid or oversized submissions are permanently 
+  rejected on-chain immediately.
+* Bundle integrity — SHA-256 hash computed on PWA, recomputed on backend, compared before anything runs
+* GPS proximity scoring — Haversine formula, score decreases linearly from center to radius boundary, rejected on-chain if outside radius
+* Timestamp validation — validated against Kite chain time, not device time. Clock drift above 5 minutes rejected. Captures before task creation or after expiry rejected.
+* Gemini Vision scoring — video scored against task-specific success criteria: item presence, condition, proof items visible, action completion
+* Composite weighted score — GPS (35%) + Timestamp (15%) + Gemini Vision (50%) = final confidence score. Must meet agent minimum confidence threshold or task is rejected on-chain and Scout cannot be paid
+* Agent-side attestation verification — after ScoutTaskCompleted 
+  fires, the agent independently fetches the on-chain attestation 
+  and verifies: attestation exists and is marked verified, capture 
+  hash is present, checkpoint hash matches the dispatched task, and 
+  attested confidence score matches the event exactly. Any mismatch 
+  is treated as tampering — the agent exits and refuses to resume.
+* No single layer can be gamed in isolation — all seven must pass before proof is accepted or payment released
 
 ### Trust Layer
 
@@ -289,6 +301,7 @@ Detects physical uncertainty, dispatches Scout through MCP, waits for verified p
 * ScoutAttestation (permanent proof record)
 * Goldsky Subgraph (real-time indexing)
 * Event-driven workflow resumption
+* Cryptographic checkpoint system (pause/resume across failures)
 
 ---
 
