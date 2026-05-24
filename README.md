@@ -156,13 +156,16 @@ Scout closes that gap.
 ## How Scout Works
 
 1. Agent encounters physical uncertainty
-2. Agent requests approval via Kite Passport policy
-3. Scout task is created automatically
-4. Nearby human Scout accepts the task
-5. Proof is gathered on-site
-6. Evidence is scored and attested onchain
-7. Agent receives cryptographic proof
-8. Agent resumes execution autonomously
+2. Agent policy fires automatically — trust score and price 
+   threshold exceeded, Scout dispatch triggered
+3. Agent requests payment approval from Kite Passport within 
+   its authorized budget
+4. Scout task is created automatically
+5. Nearby human Scout accepts the task
+6. Proof is gathered on-site
+7. Evidence is scored and attested onchain
+8. Agent receives cryptographic proof
+9. Agent resumes execution autonomously
 
 ```txt
 Agent        → detects trust gap
@@ -182,6 +185,10 @@ Agent        → Agent: verifies attestation and resumes workflow
 
 ---
 
+Here is the updated demo section:
+
+---
+
 ## Demo: Autonomous Arbitrage
 
 An autonomous arbitrage agent finds an underpriced iPhone 16 Pro listed at **$320** in Port Harcourt.
@@ -198,27 +205,44 @@ Agent pauses → Owner manually verifies seller → Owner decides whether to pro
 
 Agent detects trust gap:
 
-* unknown seller
-* unverified condition
-* no trusted physical proof
+* Unknown seller — joined 1 month ago, zero reviews, no verified badge
+* Unverified condition — no independent confirmation device exists or works
+* No trusted physical proof — digital listing alone is insufficient to act
 
-Policy fires automatically.
+Policy fires automatically. Trust score: 0. Price: $320. Both thresholds exceeded.
 
-Scout dispatches a nearby human.
+Scout dispatches a nearby human to the seller location.
 
-The Scout visits the seller location, records video evidence, and submits proof.
+The Scout records video evidence on-site and submits proof.
 
-Gemini Vision scores evidence at **95% confidence**.
+The verification pipeline runs:
 
-Proof is attested onchain.
+* **Input validation** — video format and size accepted
+* **Bundle integrity** — SHA-256 hash matches, proof not tampered with in transit
+* **GPS proximity** — Scout confirmed within required radius of seller location
+* **Timestamp validation** — capture time verified against Kite chain time, within acceptable drift
+* **Gemini Vision** — device physically present, powers on, condition matches listing
+* **Composite score** — GPS (35%) + Timestamp (15%) + Gemini Vision (50%) = **95% confidence**
 
-ScoutTaskCompleted fires.
+Confidence meets agent's 80% minimum threshold. Proof is uploaded to IPFS.
 
-The agent verifies the attestation, resumes execution, purchases the device, and relists for resale.
+`verifyAndPay()` is called. ScoutAttestation is written permanently on Kite chain. `ScoutTaskCompleted` event fires.
 
-**Net profit: $255.**
+The agent does not resume yet.
 
-No manual owner verification required.
+It independently fetches the on-chain attestation and verifies:
+* Attestation exists and is marked verified on chain
+* Capture hash is present — evidence is permanently recorded
+* Checkpoint hash matches the original dispatched task
+* Attested confidence score matches the event exactly — no tampering
+
+All seven layers passed.
+
+Agent resumes from checkpoint, contacts seller, executes purchase, relists for resale.
+
+**Net profit: $255 USDC.**
+
+**No manual owner verification required.**
 
 ---
 
@@ -239,7 +263,9 @@ Together, they enable autonomous physical commerce with no owner in the loop dur
 
 ### Agent Owner
 
-Configures spending policy once via Kite Passport, funds the session, and allows the agent to operate autonomously.
+Sets agent dispatch policy once via scout.policy.set MCP tool, 
+funds a Kite Passport session to authorize Scout payments, 
+and allows the agent to operate autonomously
 
 ### Human Scout
 
